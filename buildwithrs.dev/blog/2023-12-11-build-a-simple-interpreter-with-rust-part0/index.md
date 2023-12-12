@@ -35,4 +35,18 @@ And I searched, found 2 very useful resource below:
 
 And I learned a lot from them about how interpreter works. So I decided use rust to implement the interpter by what I learned from them.
 
-## What is the general Architecture of An Interpreter
+## The data flow Of the Interpreter
+
+![FlowOfInterpreter](flow_of_interpreter.png)
+
+- Lexer
+
+  the lexer is where the input text been split into tokens.
+
+- Parser
+
+  the parser receives the tokens stream from the Lexer, and group the tokens into many **Abstract Syntax Tree Node**(Statement).
+
+- Eval
+
+  the Eval will Recuisively calculate the AST Nodes(Statements) one by one, util the last statement. and produces objects.
