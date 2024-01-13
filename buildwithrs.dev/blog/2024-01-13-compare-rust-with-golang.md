@@ -57,6 +57,9 @@ let n1: i16 = 6;
 let n2: i32 = 99;
 let n3: i64 = 99;
 let n4: i128 = 99;
+
+let f1: f32 = 1.001;
+let f2: f64 = 9.009;
 ```
 
 ### Golang String
@@ -75,17 +78,25 @@ let hello_world1: &str = "Hello, World!";
 ### Golang Array
 
 ```go
+/*
+[100 0 0 0 0 0 0 0 0 0]
+[Hello, World         ]
+[97 0 0 0 0 0 0 0 0 0]
+*/
 var arr [10]int
-	arr[0] = 100
-	fmt.Println(arr)
+arr[0] = 100
 
-	var arr1 [10]string
-	arr1[0] = "Hello, World"
-	fmt.Println(arr1)
+fmt.Println(arr)
 
-	var arr2 [10]rune
-	arr2[0] = 'a'
-	fmt.Println(arr2)
+var arr1 [10]string
+arr1[0] = "Hello, World"
+
+fmt.Println(arr1)
+
+var arr2 [10]rune
+arr2[0] = 'a'
+
+fmt.Println(arr2)
 ```
 
 ### Rust Array
@@ -118,4 +129,100 @@ let arr_int = [1, 2, 3];
 
 let slice1: &[i32] = &arr_int[0..2];
 println!("{:?}", slice1);   // [1, 2]
+```
+
+## Complex data structure
+
+### Golang Struct
+
+```go
+type Programmer struct {
+	Name   string
+	Age    int
+	Salary int
+}
+
+func NewProgrammer(name string, age, salary int) *Programmer {
+	return &Programmer{
+		Name:   name,
+		Age:    age,
+		Salary: salary,
+	}
+}
+
+func (p *Programmer) String() string {
+	return fmt.Sprintf("name: %s\n"+
+		"age: %d\n"+
+		"salary: %d\n", p.Name, p.Age, p.Salary,
+	)
+}
+```
+
+### Rust Struct
+
+```rust
+pub struct Programmer {
+    pub name: String,
+    pub age: i32,
+    pub salary: i32,
+}
+
+impl Programmer {
+    pub fn new(name: String, age: i32, salary: i32) -> Self {
+        Self {
+            name: name,
+            age: age,
+            salary: salary,
+        }
+    }
+
+    pub fn string(&self) -> String {
+        let data = vec![
+            format!("name: {}", self.name),
+            format!("age: {}", self.age),
+            format!("salary: {}", self.salary),
+        ];
+        data.join("\n")
+    }
+}
+
+let p = Programmer::new("Bob".to_string(), 28, 10000);
+/*
+name: Bob
+age: 28
+salary: 10000
+*/
+println!("{}", p.string());
+```
+
+### Golang HashMap
+
+```go
+var m = make(map[string]struct{}, 10)
+m["A"] =  struct{}{}
+m["B"] =  struct{}{}
+```
+
+### Rust HashMap
+
+```rust
+
+/*
+{"B": 10, "A": 1, "C": 100}
+1
+*/
+
+let mut m = HashMap::new();
+m.insert("A", 1);
+m.insert("B", 10);
+m.insert("C", 100);
+
+println!("{:?}", m);
+
+let val: Option<&i32> = m.get("A");
+match val {
+    Some(v) => println!("{}", v),
+    _ => println!("not found: {}", "A"),
+}
+
 ```
