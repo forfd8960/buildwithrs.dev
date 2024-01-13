@@ -207,6 +207,8 @@ m["B"] =  struct{}{}
 
 ```rust
 
+use std::collections::{HashMap, HashSet};
+
 /*
 {"B": 10, "A": 1, "C": 100}
 1
@@ -225,4 +227,32 @@ match val {
     _ => println!("not found: {}", "A"),
 }
 
+```
+
+### Golang Set
+
+**Golang has no set data structure in std lib**
+
+### Rust Set
+
+```rust
+
+use std::collections::{HashMap, HashSet};
+
+/*
+{"C", "A", "B"}
+contains A: true
+contains Z: false
+*/
+
+let mut set = HashSet::new();
+set.insert("A");
+set.insert("B");
+set.insert("C");
+
+println!("{:?}", set);
+
+let exists = set.contains("A");
+println!("contains A: {}", exists);
+println!("contains Z: {}", set.contains("Z"));
 ```
