@@ -44,6 +44,8 @@ Full-text search engines are sophisticated systems designed to efficiently searc
 
 #### Components of a Full-Text Search Engine
 
+![Components](fts_engine.png)
+
 1. **Indexing**: Before a search engine can start searching through documents, it needs to process and organize the data. This is done through indexing. During indexing, the engine scans the text of documents and creates a list of search terms, often called an index or concordance. This index is a data structure that allows for fast searching.
 
 2. **Text Analysis**: This component processes the text to be indexed or searched. It involves several sub-tasks such as tokenization (breaking text into words or terms), stemming (reducing words to their base or root form), and removing stop words (common words like "the" and "and" that are ignored during searching).
