@@ -112,3 +112,416 @@ messages := []struct {
 
 	fmt.Printf("index: %v has been successful build\n", index)
 ```
+
+- 1. define a set of messages(data)
+
+```go
+messages := []struct {
+		Id   string
+		From string
+		Body string
+	}{
+		{
+			Id:   "index-example1",
+			From: "forfd8960",
+			Body: "test with bleve indexing",
+		},
+		{
+			Id:   "index-example2",
+			From: "forfd8960",
+			Body: "another document",
+		},
+	}
+```
+
+- 2. create index with the default mapping
+
+```go
+mapping := bleve.NewIndexMapping()
+index, err := bleve.New("example.bleve", mapping)
+```
+
+- 3. Index the msg
+
+```go
+index.Index(msg.Id, msg)
+```
+
+- 4. What happened in the `index.Index` function.
+
+     4.1 first call indexImpl.Index
+
+  ```go
+  func (i *indexImpl) Index(id string, data interface{}) (err error) {
+  ```
+
+  4.2 New a Document
+
+  ```go
+  ...
+  if !i.open {
+    return ErrorIndexClosed
+  }
+
+  /*
+  *github.com/blevesearch/bleve/document.Document {
+  ID: "index-example1",
+  Fields: []github.com/blevesearch/bleve/document.Field len: 0, cap: 0, [],
+  CompositeFields: []*github.com/blevesearch/bleve/document.CompositeField len: 0, cap: 0, [],}
+  */
+  doc := document.NewDocument(id)
+  ...
+  ```
+
+  4.3 call `MapDocument` with doc and data.
+
+  ```go
+  err = i.m.MapDocument(doc, data)
+  ```
+
+  4.4 MapDocument implement details
+
+  ```go
+  // github.com/blevesearch/bleve/mapping.(*IndexMappingImpl).MapDocument()
+  func (im *IndexMappingImpl) MapDocument(doc *document.Document, data interface{}) error {...}
+  ```
+
+  4.4.1 get `docType` and `docMapping`
+
+  ```go
+  docType := im.determineType(data)
+  docMapping := im.mappingForType(docType)
+  /*
+  (dlv) p docType
+  "_default"
+  (dlv) p docMapping
+  ("*github.com/blevesearch/bleve/mapping.DocumentMapping")(0x140003ba140)
+  *github.com/blevesearch/bleve/mapping.DocumentMapping {
+      Enabled: true,
+      Dynamic: true,
+      Properties: map[string]*github.com/blevesearch/bleve/mapping.DocumentMapping nil,
+      Fields: []*github.com/blevesearch/bleve/mapping.FieldMapping len: 0, cap: 0, nil,
+      DefaultAnalyzer: "",
+      StructTagKey: "",}
+  */
+  ```
+
+  4.4.2 call `walkDocument`
+
+  ```go
+  walkContext := im.newWalkContext(doc, docMapping)
+  docMapping.walkDocument(data, []string{}, []uint64{}, walkContext)
+
+  /*
+  (dlv) p walkContext
+  ("*github.com/blevesearch/bleve/mapping.walkContext")(0x140003eacc0)
+  *github.com/blevesearch/bleve/mapping.walkContext {
+  	doc: *github.com/blevesearch/bleve/document.Document {
+  		ID: "index-example1",
+  		Fields: []github.com/blevesearch/bleve/document.Field len: 0, cap: 0, [],
+  		CompositeFields: []*github.com/blevesearch/bleve/document.CompositeField len: 0, cap: 0, [],},
+  	im: *github.com/blevesearch/bleve/mapping.IndexMappingImpl {
+  		TypeMapping: map[string]*github.com/blevesearch/bleve/mapping.DocumentMapping [],
+  		DefaultMapping: *(*"github.com/blevesearch/bleve/mapping.DocumentMapping")(0x140003ba140),
+  		TypeField: "_type",
+  		DefaultType: "_default",
+  		DefaultAnalyzer: "standard",
+  		DefaultDateTimeParser: "dateTimeOptional",
+  		DefaultField: "_all",
+  		StoreDynamic: true,
+  		IndexDynamic: true,
+  		DocValuesDynamic: true,
+  		CustomAnalysis: *(*"github.com/blevesearch/bleve/mapping.customAnalysis")(0x14000199b90),
+  		cache: *(*"github.com/blevesearch/bleve/registry.Cache")(0x140003ba190),},
+  	dm: *github.com/blevesearch/bleve/mapping.DocumentMapping {
+  		Enabled: true,
+  		Dynamic: true,
+  		Properties: map[string]*github.com/blevesearch/bleve/mapping.DocumentMapping nil,
+  		Fields: []*github.com/blevesearch/bleve/mapping.FieldMapping len: 0, cap: 0, nil,
+  		DefaultAnalyzer: "",
+  		StructTagKey: "",},
+  	excludedFromAll: []string len: 1, cap: 1, ["_id"],}
+
+    (dlv) p walkContext.im.CustomAnalysis
+        ("*github.com/blevesearch/bleve/mapping.customAnalysis")(0x14000199b90)
+        *github.com/blevesearch/bleve/mapping.customAnalysis {
+        CharFilters: map[string]map[string]interface {} [],
+        Tokenizers: map[string]map[string]interface {} [],
+        TokenMaps: map[string]map[string]interface {} [],
+        TokenFilters: map[string]map[string]interface {} [],
+        Analyzers: map[string]map[string]interface {} [],
+        DateTimeParsers: map[string]map[string]interface {} [],}
+
+    */
+  ```
+
+  4.4.3 `walkDocument` Details.
+
+  ```go
+  // github.com/blevesearch/bleve/mapping.(*DocumentMapping).walkDocument()
+  func (dm *DocumentMapping) walkDocument(data interface{}, path []string, indexes []uint64, context *walkContext) {
+
+    ...
+    // step1 reflect the type of the data(current the data is a struct)
+    val := reflect.ValueOf(data)
+  if !val.IsValid() {
+  	return
+  }
+
+    // step2 go thourgh every field of the struct, and call `dm.processProperty(fieldVal, newpath, indexes, context)`
+  typ := val.Type()
+  switch typ.Kind() {
+        ...
+        case reflect.Struct:
+            for i := 0; i < val.NumField(); i++ {
+                field := typ.Field(i)
+                fieldName := field.Name
+                // anonymous fields of type struct can elide the type name
+                if field.Anonymous && field.Type.Kind() == reflect.Struct {
+                    fieldName = ""
+                }
+
+                // if the field has a name under the specified tag, prefer that
+                tag := field.Tag.Get(structTagKey)
+                tagFieldName := parseTagName(tag)
+                if tagFieldName == "-" {
+                    continue
+                }
+                // allow tag to set field name to empty, only if anonymous
+                if field.Tag != "" && (tagFieldName != "" || field.Anonymous) {
+                    fieldName = tagFieldName
+                }
+
+                if val.Field(i).CanInterface() {
+                    fieldVal := val.Field(i).Interface()
+                    newpath := path
+                    if fieldName != "" {
+                        newpath = append(path, fieldName)
+                    }
+                    dm.processProperty(fieldVal, newpath, indexes, context)
+                }
+            }
+        ...
+    }
+  }
+  ```
+
+  4.4.4 `processProperty`
+  In this step, will call different `newXXXFieldMappingDynamic` acccording the field type from struct.
+
+  Since the first Field(`Id`) of docuemnt is a String, So will call `newTextFieldMappingDynamic`
+
+  ```go
+  // github.com/blevesearch/bleve/mapping.(*DocumentMapping).processProperty()
+  func (dm *DocumentMapping) processProperty(property interface{}, path []string, indexes []uint64, context *walkContext) {
+      ...
+            else if closestDocMapping.Dynamic {
+                // automatic indexing behavior
+
+                // first see if it can be parsed by the default date parser
+                dateTimeParser := context.im.DateTimeParserNamed(context.im.DefaultDateTimeParser)
+                if dateTimeParser != nil {
+                    parsedDateTime, layout, err := dateTimeParser.ParseDateTime(propertyValueString)
+                    if err != nil {
+                        // index as text
+                        fieldMapping := newTextFieldMappingDynamic(context.im)
+                        fieldMapping.processString(propertyValueString, pathString, path, indexes, context)
+                    } else {
+                        // index as datetime
+                        fieldMapping := newDateTimeFieldMappingDynamic(context.im)
+                        fieldMapping.processTime(parsedDateTime, layout, pathString, path, indexes, context)
+                    }
+                }
+            }
+        ...
+  }
+  ```
+
+  4.4.5 `processString`
+
+  ```
+  step1: Get field analyzer
+  step2: New document Text Field
+  step3: Add field to docuement.
+  ```
+
+  ```go
+  func (fm *FieldMapping) processString(propertyValueString string, pathString string, path []string, indexes []uint64, context *walkContext) {
+    fieldName := getFieldName(pathString, path, fm) // Id
+    options := fm.Options() // DefaultCompositeIndexingOptions|StoreField|IncludeTermVectors|DocValues (15)
+    if fm.Type == "text" {
+        analyzer := fm.analyzerForField(path, context)
+        /*
+        ("*github.com/blevesearch/bleve/analysis.Analyzer")(0x14000280340)
+        *github.com/blevesearch/bleve/analysis.Analyzer {
+            CharFilters: []github.com/blevesearch/bleve/analysis.CharFilter len: 0, cap: 0, nil,
+            Tokenizer: github.com/blevesearch/bleve/analysis.Tokenizer(*github.com/blevesearch/bleve/analysis/tokenizer/unicode.UnicodeTokenizer) *{},
+            TokenFilters: []github.com/blevesearch/bleve/analysis.TokenFilter len: 2, cap: 2, [
+                ...,
+                ...,
+            ],}
+        */
+        field := document.NewTextFieldCustom(fieldName, indexes, []byte(propertyValueString), options, analyzer)
+        /*
+           (dlv) p field
+                ("*github.com/blevesearch/bleve/document.TextField")(0x140004180c0)
+                *github.com/blevesearch/bleve/document.TextField {
+                    name: "Id",
+                    arrayPositions: []uint64 len: 0, cap: 0, [],
+                    options: DefaultCompositeIndexingOptions|StoreField|IncludeTermVectors|DocValues (15),
+                    analyzer: *github.com/blevesearch/bleve/analysis.Analyzer {
+                        CharFilters: []github.com/blevesearch/bleve/analysis.CharFilter len: 0, cap: 0, nil,
+                        Tokenizer: github.com/blevesearch/bleve/analysis.Tokenizer(*github.com/blevesearch/bleve/analysis/tokenizer/unicode.UnicodeTokenizer) ...,
+                        TokenFilters: []github.com/blevesearch/bleve/analysis.TokenFilter len: 2, cap: 2, [
+                            ...,
+                            ...,
+                        ],},
+                    value: []uint8 len: 14, cap: 16, [105,110,100,101,120,45,101,120,97,109,112,108,101,49],
+                    numPlainTextBytes: 14,}
+        */
+        context.doc.AddField(field)
+
+        /*
+        (dlv) p context.doc.Fields
+        []github.com/blevesearch/bleve/document.Field len: 1, cap: 1, [
+            *github.com/blevesearch/bleve/document.TextField {
+                name: "Id",
+                arrayPositions: []uint64 len: 0, cap: 0, [],
+                options: DefaultCompositeIndexingOptions|StoreField|IncludeTermVectors|DocValues (15),
+                analyzer: *(*"github.com/blevesearch/bleve/analysis.Analyzer")(0x14000280340),
+                value: []uint8 len: 14, cap: 16, [105,110,100,101,120,45,101,120,97,109,112,108,101,49],
+                numPlainTextBytes: 14,},
+        ]
+        */
+        if !fm.IncludeInAll {
+            context.excludedFromAll = append(context.excludedFromAll, fieldName)
+        }
+    }
+  }
+  ```
+
+  4.4.2 Back to `walkDocuemnt` and get all Docuemnt Fields from a Struct
+
+```go
+(dlv) p context.doc.Fields
+[]github.com/blevesearch/bleve/document.Field len: 3, cap: 4, [
+	*github.com/blevesearch/bleve/document.TextField {
+		name: "Id",
+		arrayPositions: []uint64 len: 0, cap: 0, [],
+		options: DefaultCompositeIndexingOptions|StoreField|IncludeTermVectors|DocValues (15),
+		analyzer: *(*"github.com/blevesearch/bleve/analysis.Analyzer")(0x14000280340),
+		value: []uint8 len: 14, cap: 16, [105,110,100,101,120,45,101,120,97,109,112,108,101,49],
+		numPlainTextBytes: 14,},
+	*github.com/blevesearch/bleve/document.TextField {
+		name: "From",
+		arrayPositions: []uint64 len: 0, cap: 0, [],
+		options: DefaultCompositeIndexingOptions|StoreField|IncludeTermVectors|DocValues (15),
+		analyzer: *(*"github.com/blevesearch/bleve/analysis.Analyzer")(0x14000280340),
+		value: []uint8 len: 20, cap: 24, [102,111,114,102,100,56,57,54,48,64,103,105,116,104,117,98,46,99,111,109],
+		numPlainTextBytes: 20,},
+	*github.com/blevesearch/bleve/document.TextField {
+		name: "Body",
+		arrayPositions: []uint64 len: 0, cap: 0, [],
+		options: DefaultCompositeIndexingOptions|StoreField|IncludeTermVectors|DocValues (15),
+		analyzer: *(*"github.com/blevesearch/bleve/analysis.Analyzer")(0x14000280340),
+		value: []uint8 len: 24, cap: 24, [116,101,115,116,32,119,105,116,104,32,98,108,101,118,101,32,105,110,100,101,120,105,110,103],
+		numPlainTextBytes: 24,},
+]
+```
+
+4.5 Update the doc
+
+```go
+err = i.i.Update(doc)
+```
+
+4.5.1 index `i.i.Update`
+
+path: `github.com/blevesearch/bleve/index/upsidedown.(*UpsideDownCouch).Update()`
+
+```go
+func (udc *UpsideDownCouch) Update(doc *document.Document) (err error) {
+    ...
+
+    // step1: put the analysis work on the queue
+    aw := index.NewAnalysisWork(udc, doc, resultChan)
+    udc.analysisQueue.Queue(aw)
+    ...
+
+    // step2: get the analyzed result
+    /*
+        (dlv) p result
+            ("*github.com/blevesearch/bleve/index.AnalysisResult")(0x14000504000)
+            *github.com/blevesearch/bleve/index.AnalysisResult {
+                DocID: "index-example1",
+                Rows: []github.com/blevesearch/bleve/index.IndexRow len: 22, cap: 22, [
+                    ...,
+                    ...,
+                    ...,
+                    ...,
+                    ...,
+                    ...,
+                    ...,
+                    ...,
+                    ...,
+                    ...,
+                    ...,
+                    ...,
+                    ...,
+                    ...,
+                    ...,
+                    ...,
+                    ...,
+                    ...,
+                    ...,
+                    ...,
+                    ...,
+                    ...,
+                ],
+                Document: *github.com/blevesearch/bleve/document.Document nil,
+                Analyzed: []github.com/blevesearch/bleve/analysis.TokenFrequencies len: 0, cap: 0, nil,
+                Length: []int len: 0, cap: 0, nil,}
+    */
+    // step3; update the analyzed rows to key-value store
+    return udc.UpdateWithAnalysis(doc, result, backIndexRow)
+}
+```
+
+4.5.2 `UpdateWithAnalysis`
+
+step1: get the kvwriter.
+step2:
+
+```go
+func (udc *UpsideDownCouch) UpdateWithAnalysis(doc *document.Document, result *index.AnalysisResult, backIndexRow *BackIndexRow) (err error) {
+    ...
+    // step1: get the kvwriter.
+    kvwriter, err = udc.store.Writer()
+    ...
+
+    // stpe2: udc.mergeOldAndNew
+    /*
+        (dlv) p addRowsAll[0][0]
+            github.com/blevesearch/bleve/index/upsidedown.UpsideDownCouchRow(*github.com/blevesearch/bleve/index/upsidedown.FieldRow) *{index: 0, name: "Id"}
+        (dlv) p addRowsAll[0][1]
+            github.com/blevesearch/bleve/index/upsidedown.UpsideDownCouchRow(*github.com/blevesearch/bleve/index/upsidedown.StoredRow) *{
+                doc: []uint8 len: 14, cap: 16, [105,110,100,101,120,45,101,120,97,109,112,108,101,49],
+                field: 0,
+                arrayPositions: []uint64 len: 0, cap: 0, [],
+                typ: 116,
+                value: []uint8 len: 14, cap: 16, [105,110,100,101,120,45,101,120,97,109,112,108,101,49],}
+        (dlv) p string(addRowsAll[0][1].value)
+            "index-example1"
+
+        (dlv) p updateRowsAll
+            [][]github.com/blevesearch/bleve/index/upsidedown.UpsideDownCouchRow len: 0, cap: 0, nil
+        (dlv) p deleteRowsAll
+            [][]github.com/blevesearch/bleve/index/upsidedown.UpsideDownCouchRow len: 0, cap: 0, nil
+
+    */
+    addRows, updateRows, deleteRows := udc.mergeOldAndNew(backIndexRow, result.Rows)
+
+    // stpe3: write rows to key-value store
+    err = udc.batchRows(kvwriter, addRowsAll, updateRowsAll, deleteRowsAll)
+}
+```
