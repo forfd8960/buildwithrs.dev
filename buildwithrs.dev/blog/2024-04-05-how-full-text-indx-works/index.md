@@ -490,7 +490,9 @@ func (udc *UpsideDownCouch) Update(doc *document.Document) (err error) {
 4.5.2 `UpdateWithAnalysis`
 
 step1: get the kvwriter.
-step2:
+
+step2: udc.mergeOldAndNew.
+step3: batch write rows to
 
 ```go
 func (udc *UpsideDownCouch) UpdateWithAnalysis(doc *document.Document, result *index.AnalysisResult, backIndexRow *BackIndexRow) (err error) {
