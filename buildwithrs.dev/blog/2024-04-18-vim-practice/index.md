@@ -8,7 +8,7 @@ tags: [rust, error]
 ## Delete words backward
 
 - delete 1 word: `db`
-- delete n words: `b<number>b`
+- delete n words: `d<number>b`
 
 ## Delete word forward
 
@@ -16,7 +16,7 @@ tags: [rust, error]
 
 ## Change the current word inpalce
 
-- `cw`: chagne word
+- `cw`: chagne the current word
 
 ## Move forward by sentence or paragraph
 
