@@ -35,3 +35,19 @@ tags: [rust, error]
 
 - Move forward one word: `w`
 - Move backwrd one word: `b`.
+
+## Insert at the begining of multipe lines.
+
+1. Ctrl + V enter Visual Model
+2. Use j or k to select the lines you want change.
+3. Use `I` to insert text at the beginning of the line.
+4. Press `Esc` to enter Normal Mode, the text will apear for every line selected.
+
+## Append text to the end of multiple lines.
+
+1. `Ctrl + v` enter Visual Mode.
+2. Use j or k to select the lines you want change.
+3. Press `$` to navigate to the end of each line.
+4. Press `A` to append text to end of line.
+5. Insert text u want to add.
+6. Press `Esc` to enter Normal Mode, the text will appear for every line selected.
