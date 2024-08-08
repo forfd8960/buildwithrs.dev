@@ -199,6 +199,211 @@ fn scan_identifier(&mut self) -> Result<Token, LexerError> {
     }
 ```
 
-
-
 ## Parse Tokens into Json
+
+Parser consumes the Tokens, and Parse them into Json.
+
+```rust
+pub struct Parser {
+    tokens: Vec<Token>,
+    index: usize,
+}
+```
+
+For a Json, it will be a Json Object or Json Array. So the start of valid Json is either `{` or `[`.
+
+```rust
+pub fn parse(&mut self) -> Result<Json, ParserError> {
+        let mut result = Json::Null;
+        while !self.is_end() {
+            let current = self.current();
+
+            match current {
+                Token::ObjectStart => {
+                    println!("object start...");
+                    result = self.parse_object()?;
+                }
+                Token::ArrayStart => {
+                    println!("array start...");
+                    result = self.parse_array()?;
+                }
+                _ => {
+                    return Err(ParserError::InvalidToken(format!(
+                        "invalid token: {:?}",
+                        self.tokens[self.index]
+                    )));
+                }
+            }
+        }
+
+        Ok(result)
+}
+```
+
+### Parse Json Object
+
+- Consume the ObjectStart: `{`
+- Parse the key-value pairs.
+- Consume Comma if the next token is not `}`.
+- Consume the ObjectEnd: `}`
+
+
+```rust
+fn parse_object(&mut self) -> Result<Json, ParserError> {
+        self.consume(Token::ObjectStart, "expected object start: {".to_string())?;
+
+        let mut object: HashMap<String, Json> = HashMap::new();
+        while !self.check(Token::ObjectEnd) {
+            let key = self.consume(Token::String("".to_string()), "expected string".to_string())?;
+
+            self.consume(Token::Colon, "expected colon".to_string())?;
+
+            let value = self.parse_value()?;
+
+            if let Token::String(key_val) = key {
+                object.insert(key_val, value);
+            } else {
+                return Err(ParserError::InvalidToken(format!(
+                    "expected string, got {:?}",
+                    key
+                )));
+            }
+
+            if self.check(Token::ObjectEnd) {
+                break;
+            }
+            self.consume(Token::Comma, "expected comma".to_string())?;
+        }
+
+        self.consume(Token::ObjectEnd, "expected object end:}".to_string())?;
+        Ok(Json::Object(object))
+    }
+```
+
+### Parse Json Array
+
+- Consume the ArrayStart: `[`.
+- Parse the values if not meet the ArrayEnd: `]`.
+- Break the loop if meet the ArrayEnd: `]`.
+- Consume the ArrayEnd: `]`.
+
+```rust
+fn parse_array(&mut self) -> Result<Json, ParserError> {
+        self.consume(Token::ArrayStart, "expected array start: [".to_string())?;
+
+        let mut array = Vec::new();
+        while !self.check(Token::ArrayEnd) {
+            let value = self.parse_value()?;
+            array.push(value);
+
+            if self.check(Token::ArrayEnd) {
+                break;
+            }
+
+            self.consume(Token::Comma, "expected comma".to_string())?;
+        }
+
+        self.consume(Token::ArrayEnd, "expected array end: ]".to_string())?;
+        Ok(Json::Array(array))
+}
+```
+
+### Parse Json Value
+
+- Check current Token.
+- IF the token is String, then return the String.
+- IF the token is Number, then return the Number.
+- IF the token is Boolean, then return the Boolean.
+- IF the token is Null, then return the Null.
+- IF the token is ObjectStart, then parse the Object.
+- IF the token is ArrayStart, then parse the Array.
+
+```rust
+fn parse_value(&mut self) -> Result<Json, ParserError> {
+        let current = self.current();
+        println!("current: {:?}", current);
+        match current {
+            Token::String(s) => {
+                self.advance();
+                Ok(Json::String(s))
+            }
+            Token::Number(n) => {
+                self.advance();
+                Ok(Json::Number(n))
+            }
+            Token::Boolean(b) => {
+                self.advance();
+                Ok(Json::Boolean(b))
+            }
+            Token::Null => {
+                self.advance();
+                Ok(Json::Null)
+            }
+            Token::ObjectStart => self.parse_object(),
+            Token::ArrayStart => self.parse_array(),
+            _ => Err(ParserError::InvalidToken(format!(
+                "invalid token: {:?}",
+                self.tokens[self.index]
+            ))),
+        }
+}
+```
+
+## Put it all together
+
+// src/lib.rs
+
+```rust
+use errors::ParserError;
+use parser::parser::Parser;
+use parser::Json;
+use scanner::Scanner;
+
+mod errors;
+mod parser;
+mod scanner;
+mod token;
+
+pub fn parse_json(json: &str) -> Result<Json, ParserError> {
+    match Scanner::new(json.to_string()).scan() {
+        Ok(tokens) => Parser::new(tokens).parse(),
+        Err(e) => Err(ParserError::InvalidJson(e.to_string())),
+    }
+}
+
+```
+
+## Test
+
+Now we can see, we can parse the json text to Json.
+
+```rust
+use json_parser_rs::parse_json;
+
+fn main() {
+    let my_json = r#"{"name":"Alex", "age": 30, "job":"Software Engineer"}"#;
+    let json = parse_json(my_json).unwrap();
+    // parsed json: Object({"name": String("Alex"), "job": String("Software Engineer"), "age": Number(30.0)})
+    println!("parsed json: {:?}", json);
+
+    let my_json1 = r#"{"list":[1,3,6,9,100]}"#;
+    let json = parse_json(my_json1).unwrap();
+    // parsed json: Object({"list": Array([Number(1.0), Number(3.0), Number(6.0), Number(9.0), Number(100.0)])})
+    println!("parsed json: {:?}", json);
+
+    let my_json2 = r#"[1,3,6,9,100]"#;
+    let json = parse_json(my_json2).unwrap();
+    // parsed json: Array([Number(1.0), Number(3.0), Number(6.0), Number(9.0), Number(100.0)])
+    println!("parsed json: {:?}", json);
+
+    let idea_list = r#"{"ideas":[{"id":1,"title":"idea1","content":"content1","created_at":"2023-07-01T00:00:00Z","updated_at":"2023-07-01T00:00:00Z"},{"id":2,"title":"idea2","content":"content2","created_at":"2023-07-01T00:00:00Z","updated_at":"2023-07-01T00:00:00Z"}]}"#;
+    let idea_list_json = parse_json(idea_list).unwrap();
+
+    // parsed json: Object({"ideas": Array([Object({"created_at": String("2023-07-01T00:00:00Z"), "content": String("content1"), "title": String("idea1"), "updated_at": String("2023-07-01T00:00:00Z"), "id": Number(1.0)}), Object({"updated_at": String("2023-07-01T00:00:00Z"), "title": String("idea2"), "id": Number(2.0), "content": String("content2"), "created_at": String("2023-07-01T00:00:00Z")})])})
+    println!("parsed json: {:?}", idea_list_json);
+}
+```
+
+## Code Repo
+
+- [json-parser-rs](https://github.com/forfd8960/json-parser-rs)
