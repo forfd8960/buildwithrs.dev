@@ -46,16 +46,61 @@ I checked some blogs on how git works inernaly to understand the basic concepts.
 
 Some core git objects:
 
-### Index
+### Blob: `Binary Large Object`
 
-### Objects
+In git, the contents of files are stored in objects called blobs, binary large objects.
+Blobs, on the other hand, are just contents — binary streams of data. A blob doesn’t register its creation date, its name, or anything but its contents.
 
-### Commit
+Every blob in git is identified by its `SHA-1 hash`. `SHA-1 hashes` consist of 20 bytes, usually represented by 40 characters in hexadecimal form.
+
+A blob object:
+
+```sh
+git cat-file -p 2373d25e28b1fa10d1e9cee7b0380860b59451f4
+[package]
+name = "git-rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+```
+
+### Commit: `Pointer to a tree of changes.`
+
+Stored as Objects on the filesystem.
+
+In git, a snapshot is a commit. A commit object includes a pointer to the main tree (the root directory), as well as other meta-data such as the committer, a commit message and the commit time.
+
+Every commit holds the entire snapshot, not just diffs from the previous commit(s).
+
+A commit object:
+
+```sh
+git cat-file -p 1321f01cf1ef8ac81b839e9f7976d740d2d27246
+tree 9a8f8cfb359e7a106b96c749c69aa13a5e74a09a
+author forfd8960 <forfd8960@gmail.com> 1723947713 +0800
+committer forfd8960 <forfd8960@gmail.com> 1723947713 +0800
+
+init git-rs
+```
 
 ### Tree
 
-### Branch
+A tree is basically a directory listing, referring to blobs as well as other trees.
 
+Trees are identified by their SHA-1 hashes as well. Referring to these objects, either blobs or other trees, happens via the SHA-1 hash of the objects.
+
+A tree object:
+
+```sh
+git cat-file -p 9a8f8cfb359e7a106b96c749c69aa13a5e74a09a
+100644 blob ea8c4bf7f35f6f77f75d92ad8ce8349f6e81ddba	.gitignore
+100644 blob 2373d25e28b1fa10d1e9cee7b0380860b59451f4	Cargo.toml
+100644 blob c83c092da787cf77f810b961909987b55ccf8db9	README.md
+040000 tree 305157a396c6858705a9cb625bab219053264ee4	src
+```
+
+### Branch
 
 ## Init the Project
 
