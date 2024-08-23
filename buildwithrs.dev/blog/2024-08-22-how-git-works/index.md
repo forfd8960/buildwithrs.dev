@@ -353,3 +353,89 @@ awesome content2
 ```
 
 ![GitTree](git_tree.png)
+
+## Commit Object
+
+You must remember all three SHA-1 values in order to recall the snapshots. You also don’t have any information about who saved the snapshots, when they were saved, or why they were saved. This is the basic information that the commit object stores for you.
+
+To create a commit object, you call `commit-tree` and specify a single tree SHA-1 and which commit objects:
+
+```sh
+how-git-works (main)> echo 'First Commit' | git commit-tree ed75d4
+cdb7025aeca858e1e4edbabdfe4098b5dfb6c969
+
+/how-git-works (main)> git cat-file -t cdb702
+commit
+
+how-git-works (main)> git cat-file -p cdb702
+tree ed75d447f5c86fa4a77f8a79ac5592dfb64f9804
+author forfd8960 <email> 1724335460 +0800
+committer forfd8960 <email> 1724335460 +0800
+
+First Commit
+how-git-works (main)> echo 'Second Commit' | git commit-tree 259ae0 -p cdb7025
+713630997ade09e9b788ed753d69d7503c5906f4
+how-git-works (main)> echo 'Third Commit' | git commit-tree c0e146c28a999e332e8d78b7756706fefc4bd31e -p 713630997
+18f82e39c3a839b19291bc09a7236cc68a7d1db5
+
+
+how-git-works (main)> echo 'Third Commit' | git commit-tree 612a95e39274b50f98a3e7fde78865dd1df1063f -p 18f82e39c3a839b19291bc09a7236cc68a7d1db5
+edfee4d424ed95af2dd0dbb150f7c929c9d40bb0
+```
+
+### Check commit history
+
+```sh
+> git log --stat edfee4d
+
+commit edfee4d424ed95af2dd0dbb150f7c929c9d40bb0
+Date:   Thu Aug 22 22:09:24 2024 +0800
+
+    Third Commit
+
+ bak/new.txt  | 1 +
+ bak/test.txt | 1 +
+ 2 files changed, 2 insertions(+)
+
+commit 18f82e39c3a839b19291bc09a7236cc68a7d1db5
+Date:   Thu Aug 22 22:08:18 2024 +0800
+
+    Third Commit
+
+ test.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit 713630997ade09e9b788ed753d69d7503c5906f4
+Date:   Thu Aug 22 22:06:56 2024 +0800
+
+    Second Commit
+
+ new.txt | 1 +
+ 1 file changed, 1 insertion(+)
+
+commit cdb7025aeca858e1e4edbabdfe4098b5dfb6c969
+Date:   Thu Aug 22 22:04:20 2024 +0800
+
+    First Commit
+
+ test.txt | 1 +
+ 1 file changed, 1 insertion(+)
+```
+
+This is essentially what Git does when you run the `git add` and `git commit` commands — it stores blobs for the files that have changed, updates the index, writes out trees, and writes commit objects that reference the top-level trees and the commits that came immediately before them. These three main Git objects — the blob, the tree, and the commit — are initially stored as separate files in your `.git/objects` directory
+
+```sh
+how-git-works (main)> find .git/objects -type f
+.git/objects/61/2a95e39274b50f98a3e7fde78865dd1df1063f
+.git/objects/9d/3783c385e53a0e01a5396330851af4af18f8cc
+.git/objects/c0/e146c28a999e332e8d78b7756706fefc4bd31e
+.git/objects/ed/75d447f5c86fa4a77f8a79ac5592dfb64f9804
+.git/objects/ed/fee4d424ed95af2dd0dbb150f7c929c9d40bb0
+.git/objects/18/f82e39c3a839b19291bc09a7236cc68a7d1db5
+.git/objects/b6/6ba06d315d46280bb09d54614cc52d1677809f
+.git/objects/b7/aec520dec0a7516c18eb4c68b64ae1eb9b5a5e
+.git/objects/a6/835365b4eae303cbee8ff8d609a00caf2c38a8
+.git/objects/cd/b7025aeca858e1e4edbabdfe4098b5dfb6c969
+.git/objects/71/3630997ade09e9b788ed753d69d7503c5906f4
+.git/objects/25/9ae0fce2800b4d3ea66f3baf93193cb0569da5
+```
