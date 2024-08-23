@@ -439,3 +439,75 @@ how-git-works (main)> find .git/objects -type f
 .git/objects/71/3630997ade09e9b788ed753d69d7503c5906f4
 .git/objects/25/9ae0fce2800b4d3ea66f3baf93193cb0569da5
 ```
+
+## Object Storage
+
+There is a header stored with every object you commit to your Git object database. Let’s take a minute to see how Git stores its objects.
+
+Git first constructs a header which starts by identifying the type of object — in this case, a blob. To that first part of the header, Git adds a space followed by the size in bytes of the content, and adding a final null byte:
+
+### Build content and header
+
+```ruby
+irb(main):001> content="awesome git"
+=> "awesome git"
+irb(main):002> header = "blob #{content.bytesize}\0"
+=> "blob 11\u0000"
+
+```
+
+### Concat header and the content
+
+Git concatenates the header and the original content and then calculates the SHA-1 checksum of that new content
+
+```ruby
+irb(main):003> require 'digest/sha1'
+=> true
+
+irb(main):005> store = header + content
+=> "blob 11\u0000awesome git"
+irb(main):006> sha1 = Digest::SHA1.hexdigest(store)
+=> "0c6f9527992bc90f2a9f6716b64d59d381d16898"
+
+```
+
+### Compare the result with git hash-object
+
+```sh
+how-git-works git:(main) ✗ echo -n 'awesome git' | git hash
+-object --stdin
+0c6f9527992bc90f2a9f6716b64d59d381d16898
+```
+
+### Git compresses the new content with zlib
+
+```ruby
+require 'zlib'
+=> true
+irb(main):008> zlib_content = Zlib::Deflate.deflate(store)
+=> "x\x9CK\xCA\xC9OR04dH,O-\xCE\xCFMUH\xCF,\x01\x00=\xFC\x06w"
+```
+
+### Write the zlib_content into .git/objects
+
+You’ll determine the path of the object you want to write out (the first two characters of the SHA-1 value being the subdirectory name, and the last 38 characters being the filename within that directory):
+
+```ruby
+irb(main):009> path='.git/objects/'+sha1[0,2]+'/'+sha1[2,38]
+=> ".git/objects/0c/6f9527992bc90f2a9f6716b64d59d381d16898"
+irb(main):010> require 'fileutils'
+=> false
+irb(main):011> FileUtils.mkdir_p(File.dirname(path))
+=> [".git/objects/0c"]
+irb(main):012> File.open(path, 'w') { |f| f.write zlib_content}
+=> 27
+```
+
+### Let's check the file with git cat-file
+
+```sh
+➜  how-git-works git:(main) ✗ git cat-file -p 0c6f9527992bc90f2a9f6716b64d59d381d16898
+awesome git%
+➜  how-git-works git:(main) ✗ git cat-file -t 0c6f95
+blob
+```
