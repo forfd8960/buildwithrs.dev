@@ -511,3 +511,78 @@ awesome git%
 ➜  how-git-works git:(main) ✗ git cat-file -t 0c6f95
 blob
 ```
+
+## Git Reference
+
+```sh
+ how-git-works git:(main) ✗ find .git/refs
+.git/refs
+.git/refs/heads
+.git/refs/tags
+```
+
+If you were interested in seeing the history of your repository reachable from commit, say, `1a410e`, you could run something like `git log cdb7025` to display that history, but you would still have to remember that `1a410e` is the commit you want to use as the starting point for that history. Instead, it would be easier if you had a file in which you could store that SHA-1 value under a simple name so you could use that simple name rather than the raw SHA-1 value.
+
+In Git, these simple names are called “references” or “refs”; you can find the files that contain those SHA-1 values in the `.git/refs` directory.
+
+To create a new reference that will help you remember where your latest commit is, you can technically do something as simple as this:
+
+```sh
+➜  how-git-works git:(main) ✗ echo cdb7025aeca858e1e4edbabdfe4098b5dfb6c969 > .git/refs/heads/main
+➜  how-git-works git:(main) ✗ git log --pretty=online main
+
+cdb7025aeca858e1e4edbabdfe4098b5dfb6c969 (HEAD -> main) First Commit
+(END)
+```
+
+Git provides the safer command `git update-ref` to do this if you want to update a reference:
+
+```sh
+git update-ref refs/heads/main edfee4d424ed95af2dd0dbb150f7c929c9d40bb0
+
+git log --pretty=oneline test
+
+how-git-works git:(main) ✗ git update-ref refs/heads/test 18f82e39c3a839b19291bc09a7236cc68a7d1db5
+how-git-works git:(main) ✗ git log --pretty=oneline test
+```
+
+`git log --pretty=oneline test`:
+
+![Git Refs](git_refs.png)
+
+When you run commands like `git branch <branch>`, Git basically runs that `update-ref` command to add the SHA-1 of the last commit of the branch you’re on into whatever new reference you want to create.
+
+### The HEAD
+
+The question now is, when you run `git branch <branch>`, how does Git know the SHA-1 of the last commit? The answer is the HEAD file.
+
+Usually the HEAD file is a symbolic reference to the branch you’re currently on. By symbolic reference, we mean that unlike a normal reference, it contains a pointer to another reference.  
+
+```sh
+➜  how-git-works git:(main) ✗ cat .git/HEAD
+ref: refs/heads/main
+```
+
+If you run `git checkout test`, Git updates the file to look like this:
+
+```sh
+$ cat .git/HEAD
+ref: refs/heads/test
+```
+
+When you run `git commit`, it creates the commit object, specifying the parent of that commit object to be whatever SHA-1 value the reference in HEAD points to.
+
+You can also manually edit this file, but again a safer command exists to do so: `git symbolic-ref`. You can read the value of your HEAD via this command:
+
+```sh
+➜  how-git-works git:(main) ✗ git symbolic-ref HEAD
+refs/heads/main
+```
+
+* You can also set the value of HEAD using the same command:
+
+```sh
+➜  how-git-works git:(main) ✗ git symbolic-ref HEAD refs/heads/test
+
+➜  how-git-works git:(test) ✗
+```
