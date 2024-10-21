@@ -5,6 +5,17 @@ authors: forfd8960
 tags: [postgres]
 ---
 
+## Create DB
+
+create DB `story_collection`
+
+```sh
+> createdb story_collection --template=template0
+git:(main) ✗ psql -d story_collection
+psql (14.12 (Homebrew))
+Type "help" for help.
+```
+
 ## Check users
 
 ```sh
