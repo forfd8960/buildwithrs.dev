@@ -385,6 +385,115 @@ pub async fn update_todo_status(id: i64, status: i16, pool: &PgPool) -> Result<T
 }
 ```
 
+## Qeury data with models in Main
+
+`sqlx-example/src/main.rs`
+
+```rust
+use sqlx::PgPool;
+use sqlx_emaple::{
+    errors::AppError,
+    models::{Todo, User},
+    todolist::{self, CreateTodo, GetTodosArgs},
+    user::{self, CreateUser},
+};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    println!("Hello, world!");
+
+    let pool = PgPool::connect("postgres://db_manager:super_admin8801@localhost:5432/my_todo_list")
+        .await?;
+    println!("connected database: {:?}", pool);
+
+    let user_id = match create_user(&pool).await {
+        Ok(u) => {
+            println!("created user: {:?}", u);
+            u.id
+        }
+        Err(e) => {
+            println!("failed to create user: {}", e);
+            let u = user::get_user_by_id(1, &pool).await?.unwrap();
+            u.id
+        }
+    };
+
+    let todo = create_todo(&pool, user_id).await?;
+    println!("created todo: {:?}", todo);
+
+    let todos = get_todo_by_user_id(&pool, user_id).await?;
+    println!("get_todo_by_user_id: {:?}", todos);
+
+    Ok(())
+}
+
+async fn create_user(pool: &PgPool) -> Result<User, AppError> {
+    let user = CreateUser {
+        username: "Alice".to_string(),
+        email: "alice@acme.org".to_string(),
+    };
+
+    user::create_user(&user, pool).await
+}
+
+async fn create_todo(pool: &PgPool, user_id: i64) -> Result<Todo, AppError> {
+    let create_todo = CreateTodo {
+        user_id,
+        title: "Query Data with SQLX".to_string(),
+        description: "sqlx usage".to_string(),
+        status: 0,
+    };
+
+    todolist::create_todo(&create_todo, pool).await
+}
+
+async fn get_todo_by_user_id(pool: &PgPool, user_id: i64) -> Result<Vec<Todo>, AppError> {
+    todolist::get_todos_by_user_id(
+        GetTodosArgs {
+            user_id,
+            offset: 0,
+            limit: 100,
+            status: None,
+        },
+        pool,
+    )
+    .await
+}
+```
+
+The data has been inserted in Postgres
+
+```sh
+my_todo_list=> select * from users;
+ id | username |     email      |          created_at           |          updated_at
+----+----------+----------------+-------------------------------+-------------------------------
+  1 | Alice    | alice@acme.org | 2024-11-17 12:13:40.819274+08 | 2024-11-17 12:13:40.819274+08
+(1 row)
+
+
+my_todo_list=> select * from todos;
+ id | user_id |        title         | description | status |          created_at           |          updated_at
+----+---------+----------------------+-------------+--------+-------------------------------+-------------------------------
+  1 |       1 | Query Data with SQLX | sqlx usage  |      0 | 2024-11-17 12:24:10.611699+08 | 2024-11-17 12:24:10.611699+08
+  2 |       1 | Query Data with SQLX | sqlx usage  |      0 | 2024-11-17 12:27:07.354045+08 | 2024-11-17 12:27:07.354045+08
+(2 rows)
+```
+
+```sh
+sqlx-emaple (master)> cargo run .
+   Compiling sqlx-emaple v0.1.0 (~/sqlx-emaple)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.75s
+     Running `target/debug/sqlx-emaple .`
+Hello, world!
+connected database: Pool { size: 1, num_idle: 1, is_closed: false, options: PoolOptions { max_connections: 10, min_connections: 0, connect_timeout: 30s, max_lifetime: Some(1800s), idle_timeout: Some(600s), test_before_acquire: true } }
+
+failed to create user: user email already been used: alice@acme.org
+
+created todo: Todo { id: 2, user_id: 1, title: "Query Data with SQLX", description: "sqlx usage", status: 0, created_at: 2024-11-17T04:27:07.354045Z, updated_at: 2024-11-17T04:27:07.354045Z }
+
+get_todo_by_user_id: [Todo { id: 2, user_id: 1, title: "Query Data with SQLX", description: "sqlx usage", status: 0, created_at: 2024-11-17T04:27:07.354045Z, updated_at: 2024-11-17T04:27:07.354045Z }, Todo { id: 1, user_id: 1, title: "Query Data with SQLX", description: "sqlx usage", status: 0, created_at: 2024-11-17T04:24:10.611699Z, updated_at: 2024-11-17T04:24:10.611699Z }]
+```
+
 ## Complex Queries
 
 * Working with JSON, arrays, and other complex types
