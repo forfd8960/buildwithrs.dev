@@ -494,20 +494,246 @@ created todo: Todo { id: 2, user_id: 1, title: "Query Data with SQLX", descripti
 get_todo_by_user_id: [Todo { id: 2, user_id: 1, title: "Query Data with SQLX", description: "sqlx usage", status: 0, created_at: 2024-11-17T04:27:07.354045Z, updated_at: 2024-11-17T04:27:07.354045Z }, Todo { id: 1, user_id: 1, title: "Query Data with SQLX", description: "sqlx usage", status: 0, created_at: 2024-11-17T04:24:10.611699Z, updated_at: 2024-11-17T04:24:10.611699Z }]
 ```
 
-## Complex Queries
-
-* Working with JSON, arrays, and other complex types
-
-* Custom deserialization logic
-
 ## Managing Transactions
 
 * Starting and committing transactions
 
+`let mut tx = pool.begin().await?;`
+
+### Set Model: `Account`
+
+```rust
+#[derive(Debug, Clone, FromRow, PartialEq)]
+pub struct Account {
+    pub account_id: i64,
+    pub user_id: i64,
+    pub balance: BigDecimal,
+    pub currency: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub is_active: bool,
+}
+```
+
+### Create Account
+
+`sqlx-example/src/account.rs`
+
+```rust
+use serde::Deserialize;
+use sqlx::{PgPool, Postgres, Transaction};
+
+use crate::{errors::AppError, models::Account};
+
+#[derive(Debug, Deserialize)]
+pub struct CreateAccount {
+    pub user_id: i64,
+    pub balance: f64,
+    pub currency: String,
+    pub is_active: bool,
+}
+
+pub async fn create_account(input: &CreateAccount, pool: &PgPool) -> Result<Account, AppError> {
+    let account = sqlx::query_as("INSERT INTO account(user_id, balance, currency, is_active) VALUES($1, $2, $3, $4) RETURNING account_id,user_id, balance, currency,created_at,updated_at,is_active")
+        .bind(&input.user_id)
+        .bind(&input.balance)
+        .bind(&input.currency)
+        .bind(&input.is_active)
+        .fetch_one(pool)
+        .await?;
+    Ok(account)
+}
+```
+
+### Transfer `amount` to another Account
+
+`sqlx-example/src/main.rs`
+
+```rust
+use sqlx::PgPool;
+use sqlx_emaple::{
+    account::{self, CreateAccount},
+    errors::AppError,
+    models::{Account, Todo, User},
+    todolist::{self, CreateTodo, GetTodosArgs},
+    user::{self, CreateUser},
+};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    println!("Hello, world!");
+
+    let pool = PgPool::connect("postgres://db_manager:super_admin8801@localhost:5432/my_todo_list")
+        .await?;
+    println!("connected database: {:?}", pool);
+    println!();
+
+    // let user1 = create_user(&pool, "Alex".to_string()).await?;
+    // let user2 = create_user(&pool, "Bob".to_string()).await?;
+
+    let account1 = create_account(&pool, 2 as i64, 1000.0 as f64).await?;
+    let account2 = create_account(&pool, 3 as i64, 1000.0 as f64).await?;
+
+    println!(
+        "transfer from account1: {:?}, to account2: {:?}",
+        account1, account2
+    );
+    transfer_from_to(
+        &pool,
+        account1.account_id,
+        account2.account_id,
+        100.0 as f64,
+    )
+    .await?;
+
+    Ok(())
+}
+```
+
+### transfer_from_to
+
+`sqlx-example/src/main.rs`
+
+```rust
+async fn transfer_from_to(
+    pool: &PgPool,
+    from_user: i64,
+    to_user: i64,
+    amount: f64,
+) -> Result<(), AppError> {
+    println!(
+        "start transaction transafer from: {} to: {}, with amount: {}",
+        from_user, to_user, amount
+    );
+
+    let mut tx = pool.begin().await?;
+
+    let from_account = account::withdrawal(from_user, amount, &mut tx).await?;
+    println!("withdrawal {} from acount: {:?}", amount, from_account);
+
+    let to_account = account::deposit(to_user, amount, &mut tx).await?;
+    println!("deposit {} from acount: {:?}", amount, to_account);
+
+    match tx.commit().await {
+        Ok(()) => {
+            println!("success transfer {} to {}", amount, to_account.account_id);
+        }
+        Err(e) => {
+            println!(
+                "transfer {} to {} failed: {:?}",
+                amount, to_account.account_id, e
+            );
+        }
+    }
+
+    Ok(())
+}
+```
+
+### Withdrawal
+
+`sqlx-example/src/account.rs`
+
+```rust
+pub async fn withdrawal(
+    account_id: i64,
+    amount: f64,
+    tx: &mut Transaction<'static, Postgres>,
+) -> Result<Account, AppError> {
+    // 1 lock thw account for update
+
+    let _ = sqlx::query("SELECT * FROM account WHERE account_id=$1 FOR UPDATE")
+        .bind(account_id)
+        .fetch_one(&mut **tx)
+        .await?;
+
+    // 2 update account balance
+    let now: DateTime<Utc> = Utc::now();
+    let account = sqlx::query_as(
+        "UPDATE account SET balance=balance - $1, updated_at=$2 
+            WHERE account_id=$3
+            RETURNING account_id,user_id, balance, currency,created_at,updated_at,is_active",
+    )
+    .bind(amount)
+    .bind(now)
+    .bind(account_id)
+    .fetch_one(&mut **tx)
+    .await?;
+    Ok(account)
+}
+```
+
+### Deposit
+
+`sqlx-example/src/account.rs`
+
+```rust
+pub async fn deposit<'a>(
+    account_id: i64,
+    amount: f64,
+    tx: &mut Transaction<'static, Postgres>,
+) -> Result<Account, AppError> {
+    // 1 lock thw account for update
+
+    let _ = sqlx::query("SELECT * FROM account WHERE account_id=$1 FOR UPDATE")
+        .bind(account_id)
+        .execute(&mut **tx)
+        .await?;
+
+    // 2 update account balance
+    let now: DateTime<Utc> = Utc::now();
+    let account = sqlx::query_as(
+        "UPDATE account SET balance=balance + $1, updated_at=$2 
+            WHERE account_id=$3
+            RETURNING account_id,user_id, balance, currency,created_at,updated_at,is_active",
+    )
+    .bind(amount)
+    .bind(now)
+    .bind(account_id)
+    .fetch_one(&mut **tx)
+    .await?;
+    Ok(account)
+}
+
+```
+
+### Run Transaction
+
+```sh
+
+sqlx-emaple (master)> cargo run .
+
+warning: `sqlx-emaple` (bin "sqlx-emaple") generated 3 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.43s
+     Running `target/debug/sqlx-emaple .`
+
+Hello, world!
+connected database: Pool { size: 1, num_idle: 1, is_closed: false, options: PoolOptions { max_connections: 10, min_connections: 0, connect_timeout: 30s, max_lifetime: Some(1800s), idle_timeout: Some(600s), test_before_acquire: true } }
+
+transfer from account1: Account { account_id: 4, user_id: 2, balance: BigDecimal(sign=Plus, scale=0, digits=[1000]), currency: "USD", created_at: 2024-11-17T09:13:07.588104Z, updated_at: 2024-11-17T09:13:07.588104Z, is_active: true }, to account2: Account { account_id: 5, user_id: 3, balance: BigDecimal(sign=Plus, scale=0, digits=[1000]), currency: "USD", created_at: 2024-11-17T09:13:07.617288Z, updated_at: 2024-11-17T09:13:07.617288Z, is_active: true }
+start transaction transafer from: 4 to: 5, with amount: 100
+withdrawal 100 from acount: Account { account_id: 4, user_id: 2, balance: BigDecimal(sign=Plus, scale=0, digits=[900]), currency: "USD", created_at: 2024-11-17T09:13:07.588104Z, updated_at: 2024-11-17T09:13:07.622722Z, is_active: true }
+deposit 100 from acount: Account { account_id: 5, user_id: 3, balance: BigDecimal(sign=Plus, scale=0, digits=[1100]), currency: "USD", created_at: 2024-11-17T09:13:07.617288Z, updated_at: 2024-11-17T09:13:07.629311Z, is_active: true }
+success transfer 100 to 5
+
+```
+
+```sh
+my_todo_list=> select * from account;
+ account_id | user_id | balance | currency |          created_at           |          updated_at           | is_active
+------------+---------+---------+----------+-------------------------------+-------------------------------+-----------
+          4 |       2 |  900.00 | USD      | 2024-11-17 17:13:07.588104+08 | 2024-11-17 17:13:07.622722+08 | t
+          5 |       3 | 1100.00 | USD      | 2024-11-17 17:13:07.617288+08 | 2024-11-17 17:13:07.629311+08 | t
+(5 rows)
+```
+
+## Complex Queries
+
 * Rolling back transactions on errors
-
 * Batch Operations
-
 * Executing multiple queries in a single transaction
-
 * Optimizing batch inserts and updates
+
+* Working with JSON, arrays, and other complex types
+
+* Custom deserialization logic
