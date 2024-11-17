@@ -175,49 +175,230 @@ my_todo_list=> select * from users;
 (0 rows)
 ```
 
+## Set Models
+
+### Set the data model(`struct`) for each table
+
+`sqlx-example/src/models.rs`
+
+When set model for a Row, use `FromRow` macro to do map the Row to the Struct:
+
+**mapping Rows to Structs, Using `#[derive(sqlx::FromRow)]`**
+
+```rust
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
+
+#[derive(Debug, FromRow, Serialize, Deserialize)]
+pub struct Todo {
+    pub id: i64,
+    pub user_id: i64,
+    pub title: String,
+    pub description: String,
+    pub status: i16,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, PartialEq)]
+pub struct User {
+    pub id: i64,
+    pub username: String,
+    pub email: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+```
+
 ## Executing Queries
 
-Basic Query Execution
+### Create User
 
-Writing SQL queries
+`sqlx-example/src/user.rs`
 
-Executing queries using query and query_as
+* Use `sqlx::query_as` to set the SQL that to create the User.
 
-Parameterized Queries
+> Execute a single SQL query as a prepared statement (transparently cached).Maps rows to Rust types using [`FromRow`].
 
-Using placeholders (? or :name)
+* Use `bind` to set the values in the SQL.
+* Use `fetch_one` to get one row from the DB.
 
-Binding parameters in queries
+> Execute the query, returning the first row or [`Error::RowNotFound`] otherwise.
 
-Fetching Results
 
-Retrieving rows with fetch and fetch_one
+```rust
+use serde::Deserialize;
+use sqlx::PgPool;
 
-Handling optional results with fetch_optional
+use crate::{errors::AppError, models::User};
 
-## Working with Structs and Mappings
+#[derive(Debug, Deserialize)]
+pub struct CreateUser {
+    pub username: String,
+    pub email: String,
+}
 
-Mapping Rows to Structs
+pub async fn create_user(input: &CreateUser, pool: &PgPool) -> Result<User, AppError> {
+    let user = sqlx::query_as("INSERT INTO users(username, email) VALUES($1, $2) RETURNING id,username,email,created_at,updated_at")
+        .bind(&input.username)
+        .bind(&input.email)
+        .fetch_one(pool)
+        .await?;
+    Ok(user)
+}
+```
 
-Using `#[derive(sqlx::FromRow)]`
+### Get Uer by email and id
 
-Customizing field mappings
+* Use `fetch_optional` to get one `Option<Row>`.
 
-Handling Complex Types
+> Execute the query, returning the first row or `None` otherwise.
 
-Working with JSON, arrays, and other complex types
 
-Custom deserialization logic
+```rust
+pub async fn get_user_by_email(email: &str, pool: &PgPool) -> Result<Option<User>, AppError> {
+    let user = sqlx::query_as(
+        "SELECT id,username,email,created_at,updated_at FROM users WHERE email=$1",
+    )
+    .bind(email)
+    .fetch_optional(pool)
+    .await?;
+    Ok(user)
+}
 
-Transactions and Batch Operations
-Managing Transactions
+pub async fn get_user_by_id(id: i64, pool: &PgPool) -> Result<Option<User>, AppError> {
+    let user =
+        sqlx::query_as("SELECT id,username,email,created_at,updated_at FROM users WHERE id=$1")
+            .bind(id)
+            .fetch_optional(pool)
+            .await?;
+    Ok(user)
+}
+```
 
-Starting and committing transactions
+### Create Todo
 
-Rolling back transactions on errors
+In `sqlx-example/src/todolist.rs`
 
-Batch Operations
+```rust
+use serde::Deserialize;
+use sqlx::PgPool;
 
-Executing multiple queries in a single transaction
+use crate::{errors::AppError, models::Todo};
 
-Optimizing batch inserts and updates
+#[derive(Debug, Deserialize)]
+pub struct CreateTodo {
+    pub user_id: i64,
+    pub title: String,
+    pub description: String,
+    pub status: i16,
+}
+
+pub async fn create_todo(input: &CreateTodo, pool: &PgPool) -> Result<Todo, AppError> {
+    let todo = sqlx::query_as(
+        r#"INSERT INTO todos (user_id,title,description,status)
+                VALUES ($1,$2,$3,$4)
+                RETURNING id,user_id,title,description,status,created_at,updated_at;
+                "#,
+    )
+    .bind(input.user_id)
+    .bind(&input.title)
+    .bind(&input.description)
+    .bind(input.status)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(todo)
+}
+```
+
+### List Todos
+
+* Use `fetch_all` to get all the rows.
+
+```rust
+#[derive(Debug)]
+pub struct GetTodosArgs {
+    pub user_id: i64,
+    pub offset: i64,
+    pub limit: i64,
+    pub status: Option<i16>,
+}
+
+pub async fn get_todos_by_user_id(
+    args: GetTodosArgs,
+    pool: &PgPool,
+) -> Result<Vec<Todo>, AppError> {
+    let mut offset = args.offset;
+    if args.offset < 0 {
+        offset = 0;
+    }
+
+    let mut limit = args.limit;
+    if args.limit <= 0 || args.limit > 100 {
+        limit = 100
+    }
+
+    let mut status = 0 as i16;
+    if args.status.is_some() {
+        status = args.status.unwrap();
+    }
+
+    let todos = sqlx::query_as(
+        r#"
+        SELECT id,user_id,title,description,status,created_at,updated_at
+        FROM todos
+        WHERE user_id=$1 AND status=$2
+        ORDER BY id DESC
+        LIMIT $3
+        OFFSET $4;
+    "#,
+    )
+    .bind(args.user_id)
+    .bind(status)
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(todos)
+}
+```
+
+### Update Todo Status
+
+```rust
+pub async fn update_todo_status(id: i64, status: i16, pool: &PgPool) -> Result<Todo, AppError> {
+    let todo = sqlx::query_as(
+        r#"
+        UPDATE todos SET status=$1 WHERE id=$2
+        RETURNING id,user_id,title,description,status,created_at,updated_at;
+    "#,
+    )
+    .bind(status)
+    .bind(id)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(todo)
+}
+```
+
+## Complex Queries
+
+* Working with JSON, arrays, and other complex types
+
+* Custom deserialization logic
+
+## Managing Transactions
+
+* Starting and committing transactions
+
+* Rolling back transactions on errors
+
+* Batch Operations
+
+* Executing multiple queries in a single transaction
+
+* Optimizing batch inserts and updates
