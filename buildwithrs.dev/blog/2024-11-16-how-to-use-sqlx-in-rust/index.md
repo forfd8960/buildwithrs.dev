@@ -14,6 +14,7 @@ tags: [rust, sqlx, database]
 * Key features of SQLx
 ![alt text](sqlx_features.png)
 
+<!-- truncate -->
 
 ## Setting Up Your Rust Project
 
@@ -729,11 +730,85 @@ my_todo_list=> select * from account;
 
 ## Complex Queries
 
-* Rolling back transactions on errors
-* Batch Operations
-* Executing multiple queries in a single transaction
-* Optimizing batch inserts and updates
+### Batch Insert Rows
 
-* Working with JSON, arrays, and other complex types
+#### bulk_create_todos
 
-* Custom deserialization logic
+> **sqlx-example/src/models/todolist.rs**
+
+```rust
+pub async fn bulk_create_todos(pool: &PgPool, todos: &[CreateTodo]) -> Result<(), sqlx::Error> {
+    let user_ids: Vec<i64> = todos.iter().map(|s| s.user_id).collect();
+    let titles: Vec<String> = todos.iter().map(|s| s.title.clone()).collect();
+    let descs: Vec<String> = todos.iter().map(|s| s.description.clone()).collect();
+    let status: Vec<i16> = todos.iter().map(|s| s.status).collect();
+
+    sqlx::query!(
+        r#"INSERT INTO todos (user_id,title,description,status)
+         SELECT * FROM UNNEST($1::bigint[], $2::text[], $3::text[], $4::smallint[])"#,
+        &user_ids[..],
+        &titles[..],
+        &descs[..],
+        &status[..],
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+```
+
+#### bulk insert main
+
+`sqlx-example/examples/bulk_insert.rs`
+
+```rust
+use sqlx::PgPool;
+use sqlx_example::todolist::{self, CreateTodo};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    println!("Bulk Insert example");
+
+    let pool = PgPool::connect("postgres://db_manager:xxx@localhost:5432/my_todo_list").await?;
+
+    println!("connected database: {:?}", pool);
+    println!();
+
+    let todos = vec![
+        CreateTodo {
+            user_id: 1,
+            title: "learn axum".to_string(),
+            description: "axum".to_string(),
+            status: 0,
+        },
+        CreateTodo {
+            user_id: 2,
+            title: "learn sqlx".to_string(),
+            description: "sqlx".to_string(),
+            status: 0,
+        },
+        CreateTodo {
+            user_id: 1,
+            title: "learn react".to_string(),
+            description: "react".to_string(),
+            status: 0,
+        },
+    ];
+
+    todolist::bulk_create_todos(&pool, &todos).await?;
+    println!("bulk create todos success!");
+    Ok(())
+}
+
+```
+
+```sh
+my_todo_list=> select * from todos order by created_at desc limit 3;
+ id | user_id |    title    | description | status |          created_at           |          updated_at
+----+---------+-------------+-------------+--------+-------------------------------+-------------------------------
+  3 |       1 | learn axum  | axum        |      0 | 2024-11-18 08:44:24.291281+08 | 2024-11-18 08:44:24.291281+08
+  4 |       2 | learn sqlx  | sqlx        |      0 | 2024-11-18 08:44:24.291281+08 | 2024-11-18 08:44:24.291281+08
+  5 |       1 | learn react | react       |      0 | 2024-11-18 08:44:24.291281+08 | 2024-11-18 08:44:24.291281+08
+(3 rows)
+```
