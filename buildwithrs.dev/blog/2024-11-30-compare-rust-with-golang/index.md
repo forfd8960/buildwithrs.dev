@@ -536,8 +536,225 @@ func TestMain(t *testing.T) {
 
 ```
 
-## Channel
+## Concurency
 
-## Async Programming
+### Rust Concurrency Programming
 
-## Generic
+```rust
+use std::{
+    sync::{
+        mpsc::{self, Receiver},
+        Arc, Mutex,
+    },
+    thread,
+};
+
+pub fn threads() {
+    let handle1 = thread::spawn(|| {
+        println!("thread1 running");
+    });
+
+    let handle2 = thread::spawn(|| {
+        println!("running thread2");
+    });
+
+    let handle3 = thread::spawn(|| {
+        println!("thread3 running");
+    });
+
+    for handle in vec![handle1, handle2, handle3] {
+        handle.join().unwrap();
+    }
+}
+
+pub fn sequare_nums() {
+    let nums = vec![2, 3, 8, 9, 100];
+    let (rx, tx) = mpsc::channel();
+    let h1 = thread::spawn(move || {
+        for num in nums {
+            rx.send(num).unwrap();
+        }
+    });
+
+    /*
+    ---- concur::tests::test_sequare_nums stdout ----
+    calculating num sequare
+    received: 4
+    received: 9
+    received: 64
+    received: 81
+    received: 10000
+        */
+    let h2 = thread::spawn(|| {
+        for num in sq(tx) {
+            println!("received: {}", num);
+        }
+    });
+
+    h1.join().unwrap();
+    h2.join().unwrap();
+}
+
+fn sq(nums: Receiver<i32>) -> Receiver<i32> {
+    println!("calculating num sequare");
+    let (rx, tx) = mpsc::channel();
+    let _ = thread::spawn(move || {
+        for num in nums {
+            rx.send(num * num).unwrap();
+        }
+    });
+
+    tx
+}
+
+pub fn concurrent_counter() -> i32 {
+    let counter = Arc::new(Mutex::new(0));
+    let mut handlers = vec![];
+
+    for _ in 0..100 {
+        let cnt_clone = counter.clone();
+        let h = thread::spawn(move || {
+            let mut cnt = cnt_clone.lock().unwrap();
+            *cnt += 1;
+        });
+
+        handlers.push(h);
+    }
+
+    for handler in handlers {
+        handler.join().unwrap();
+    }
+
+    let value = *counter.lock().unwrap();
+    value
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_channel() {
+        threads();
+    }
+
+    #[test]
+    fn test_sequare_nums() {
+        sequare_nums();
+    }
+
+    #[test]
+    fn test_concurrent_counter() {
+        let count = concurrent_counter();
+        assert_eq!(count, 100);
+    }
+}
+
+```
+
+### Golang Concurrency Programming
+
+```go
+package concurrency
+
+import (
+	"fmt"
+	"sync"
+	"sync/atomic"
+	"time"
+)
+
+func RuntThreads() {
+	go func() {
+		fmt.Println("running thread1")
+	}()
+
+	go func() {
+		fmt.Println("running thread2")
+	}()
+
+	go func() {
+		fmt.Println("running thread3")
+	}()
+
+	// waiting all thread done
+	time.Sleep(1000 * time.Millisecond)
+}
+
+func SendMessage(nums ...int32) []int32 {
+	inputCh := sendNums(nums)
+	valuesCh := sequereNums(inputCh)
+
+	var result []int32
+	for val := range valuesCh {
+		result = append(result, val)
+	}
+	return result
+}
+
+func sendNums(nums []int32) chan int32 {
+	numsCh := make(chan int32, len(nums))
+	go func() {
+		for _, num := range nums {
+			numsCh <- num
+		}
+		close(numsCh)
+	}()
+
+	return numsCh
+}
+
+func sequereNums(input chan int32) <-chan int32 {
+	valuesCh := make(chan int32, len(input))
+	go func() {
+		for num := range input {
+			valuesCh <- num * num
+		}
+		close(valuesCh)
+	}()
+
+	return valuesCh
+}
+
+func Counter(initVal int64, times int64) int64 {
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	var idx = int64(0)
+	for idx < times {
+
+		wg.Add(1)
+		go func() {
+			fmt.Printf("adding one to init value\n")
+
+			defer wg.Done()
+			mu.Lock()
+			initVal += 1
+			mu.Unlock()
+		}()
+		idx++
+	}
+
+	wg.Wait()
+	return initVal
+}
+
+func AtomicCounter1(initVal int64, times int64) int64 {
+	var wg sync.WaitGroup
+
+	var idx = int64(0)
+	for idx < times {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			atomic.AddInt64(&initVal, 1)
+		}()
+
+		idx++
+	}
+
+	wg.Wait()
+	return initVal
+}
+
+```
