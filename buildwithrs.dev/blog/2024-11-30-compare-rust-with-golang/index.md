@@ -359,14 +359,185 @@ run result: 1
 ```
 
 
-## Type System
-
-## Generic
 
 ## Error handling
+
+### Rust can use `?` to propagate the error to upper level function
+
+```rust
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("empty elements")]
+    EmptyElements,
+    #[error("invalid num")]
+    InvalidNum,
+}
+
+pub fn sum_nums(nums: &[i32]) -> Result<i32, Error> {
+    if nums.len() == 0 {
+        return Err(Error::EmptyElements);
+    }
+
+    let mut total = 0;
+    let mut idx = 0 as usize;
+    loop {
+        if idx >= nums.len() {
+            break;
+        }
+
+        let j = idx + 1;
+
+        let mut next = 0 as i32;
+        if j < nums.len() {
+            next = nums[j];
+        }
+
+        let sum = sum2(nums[idx], next)?;
+        total += sum;
+        idx = j + 1;
+    }
+
+    Ok(total)
+}
+
+fn sum2(a: i32, b: i32) -> Result<i32, Error> {
+    if b < 0 {
+        return Err(Error::InvalidNum);
+    }
+
+    Ok(a + b)
+}
+
+```
+
+### Go need explictily return the error to the upper level function
+
+```go
+package errors
+
+import "fmt"
+
+func Main(elements []int32) (int32, error) {
+	sum, err := sumAll(elements...)
+	if err != nil {
+		return -1, err
+	}
+
+	return sum, nil
+}
+
+func sumAll(elements ...int32) (int32, error) {
+	length := len(elements)
+	if length == 0 {
+		return -1, fmt.Errorf("empty elements")
+	}
+
+	var total int32
+	for i := 0; i < len(elements); {
+		j := i + 1
+		next := int32(0)
+
+		if j < len(elements) {
+			next = elements[j]
+
+		}
+		sum, err := sum2(elements[i], next)
+		if err != nil {
+			return -1, err
+		}
+
+		total += sum
+
+		i += 2
+	}
+
+	return total, nil
+}
+
+func sum2(a, b int32) (int32, error) {
+	if b < 0 {
+		return -1, fmt.Errorf("b is not less than 0")
+	}
+
+	return a + b, nil
+}
+```
+
+## Unit Test
+
+* Rust: put the test module under the code that be tested
+
+with
+
+```rust
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn test_fn() {
+        // call test fn
+    }
+}
+```
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::sum_nums;
+
+    #[test]
+    fn test_sum_works() -> anyhow::Result<()> {
+        let sum = sum_nums(vec![1, 2, 3].as_slice())?;
+        assert_eq!(sum, 6);
+        Ok(())
+    }
+}
+
+```
+
+### Put unit test code under same package and name with `xxx_test.go`
+
+```go
+package errors
+
+import "testing"
+
+func TestMain(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    []int32
+		want    int32
+		wantErr bool
+	}{
+		{
+			name:    "happy path",
+			args:    []int32{1, 3, 9, 189, 200},
+			want:    213 + 189,
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Main(tt.args)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Main() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if got != tt.want {
+				t.Errorf("Main() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+```
 
 ## Channel
 
 ## Async Programming
 
-## Macro
+## Generic
