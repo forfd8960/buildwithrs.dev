@@ -20,6 +20,8 @@ Some questions I want to know are:
 * How git store the commit when you run `git commit -m "message"`
 * How git restore the repo when checkout to another branch.
 
+<!-- truncate -->
+
 After reading many blogs and article about git. I learned some internals of git.
 
 ## Git is a content-addressable filesystem

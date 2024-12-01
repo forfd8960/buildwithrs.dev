@@ -31,6 +31,8 @@ anyhow = "1.0.82"
 tonic-build = "0.11.0"
 ```
 
+<!-- truncate -->
+
 ## Add new stream method to protobuf
 
 ```protobuf

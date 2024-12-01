@@ -16,6 +16,8 @@ psql (14.12 (Homebrew))
 Type "help" for help.
 ```
 
+<!-- truncate -->
+
 ## Check users
 
 ```sh

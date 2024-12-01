@@ -22,6 +22,8 @@ pub enum LexerError {
 }
 ```
 
+<!-- truncate -->
+
 And also you want the scan function can result it in the Result:
 
 suppose the scan function looks like this:

@@ -20,6 +20,8 @@ anyhow = "1.0.82"
 tonic-build = "0.11.0"
 ```
 
+<!-- truncate -->
+
 ## Generate PB
 
 * put the proto under the project `src` directory

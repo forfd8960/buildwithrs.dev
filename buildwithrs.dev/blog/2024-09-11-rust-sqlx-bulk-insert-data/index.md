@@ -17,6 +17,8 @@ CREATE TABLE user_info(
 );
 ```
 
+<!-- truncate -->
+
 ## Main
 
 ```rust

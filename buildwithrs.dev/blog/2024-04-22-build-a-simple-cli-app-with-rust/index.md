@@ -17,6 +17,8 @@ And the final command to use the cli app, is something like this:
 ./target/debug/rcli csv -i test.csv
 ```
 
+<!-- truncate -->
+
 ## Init the app
 
 ```sh

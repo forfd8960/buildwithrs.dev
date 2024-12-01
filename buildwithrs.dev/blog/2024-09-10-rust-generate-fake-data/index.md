@@ -17,6 +17,8 @@ nanoid = "0.4.0"
 fake = { version="2.9.2", features=["derive", "chrono"]}
 ```
 
+<!-- truncate -->
+
 ## Apply Dummy trait on struct
 
 * Assume need to generate some UserStats fake data.

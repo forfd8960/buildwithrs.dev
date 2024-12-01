@@ -18,6 +18,8 @@ tags: [rust, error]
 
 - `cw`: chagne the current word
 
+<!-- truncate -->
+
 ## Move forward by sentence or paragraph
 
 - `)`: Move forward one sentence.

@@ -9,6 +9,8 @@ In the Axum web development with Rust, need to implement generate a safe passwor
 
 In this blog, I will introduce how to generate it with `Rust` `Argon2`.
 
+<!-- truncate -->
+
 ## Cargo.toml
 
 ```toml

@@ -7,6 +7,8 @@ tags: [rust, interpreter, lexer]
 
 The first component of this interpreter is a Lexer which used for scan and group the chars into Tokens.
 
+<!-- truncate -->
+
 Before start to build the Lexer, let's see what's finnal script we will to run:
 
 ```go

@@ -16,6 +16,8 @@ in the first version of the deduplicate:
 - If exists then skip.
 - If not exists then push the data to new result: `dedup_data`.
 
+<!-- truncate -->
+
 ```rust
 fn deduplicate(data: Vec<Vec<String>>, idx: usize) -> Vec<Vec<String>> {
     let mut dedup_data: Vec<Vec<String>> = Vec::with_capacity(data.len() as usize);

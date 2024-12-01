@@ -11,6 +11,8 @@ Let's build a Simple RPC Service with Tonic: `Social`, and it's only have greet 
 
 ![project structure](image.png)
 
+<!-- truncate -->
+
 ## The Denependencies
 
 ```toml

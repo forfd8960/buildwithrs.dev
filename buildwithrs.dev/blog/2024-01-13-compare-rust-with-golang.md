@@ -9,6 +9,8 @@ I have been using golang long time to wirte backend business logic.
 
 After writing some rust code and I want do a comparison between golang and rust. This is maybe another good way to help you learn rust.
 
+<!-- truncate -->
+
 ## Basic Data Types
 
 ### Golang Boolean

@@ -25,6 +25,8 @@ let arr = hf.hash();
 arr.to_vec()
 ```
 
+<!-- truncate -->
+
 ```rust
 use sha1_checked::{Digest, Sha1};
 

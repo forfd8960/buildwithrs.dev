@@ -18,6 +18,8 @@ We use git to manage our code, and do version control.
 * use `git checkout -b <new_branch>` to create and checkout to a new branch.
 * use `git rebase master` to rebase changes from master to the current branch.
 
+<!-- truncate -->
+
 ## Why use rust to implement git
 
 Just want to know deeply how Git works internally by building it.

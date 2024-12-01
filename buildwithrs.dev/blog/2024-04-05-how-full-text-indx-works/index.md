@@ -17,6 +17,8 @@ And have many questions:
 
 After Read about Elastic Search Docuemnts, Melisearch blogs, Couchbase blog, and read some source code from Bleve.
 
+<!-- truncate -->
+
 - [How to deliver the best search results: inside a full text search engine](https://blog.meilisearch.com/how-full-text-search-engines-work/)
 
 * [Text Analysis within a Full-Text Search Engine](https://www.couchbase.com/blog/full-text_search_text_analysis/)

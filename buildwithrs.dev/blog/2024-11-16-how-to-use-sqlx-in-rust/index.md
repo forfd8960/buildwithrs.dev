@@ -24,7 +24,6 @@ tags: [rust, sqlx, database]
 note: see more `Cargo.toml` keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 ```
 
-
 * Adding dependencies (sqlx, tokio, etc.)
 
 ```toml

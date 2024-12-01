@@ -9,6 +9,8 @@ tags: [rust, axum, jwt]
 
 JWT, or JSON Web Token, is a compact and self-contained way of securely transmitting information between parties as a JSON object.
 
+<!-- truncate -->
+
 Here are the key points about JWT:
 
 ### Structure

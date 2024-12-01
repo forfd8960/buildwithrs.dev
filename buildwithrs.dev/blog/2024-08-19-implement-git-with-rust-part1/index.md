@@ -17,6 +17,8 @@ pub enum GitSubCommand {
 }
 ```
 
+<!-- truncate -->
+
 ```rust
 #[derive(Debug, Parser)]
 pub struct AddOpts {

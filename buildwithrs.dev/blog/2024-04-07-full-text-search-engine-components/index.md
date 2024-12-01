@@ -19,6 +19,8 @@ Look into Bleve Modern Search Lib Code, and Found that it has the following core
 | mapping   | implment DocumentMapping: How the Document should be indexed.           |     |
 | search    | Implment search functionality                                           |     |
 
+<!-- truncate -->
+
 ## List of pkg
 
 ```sh
