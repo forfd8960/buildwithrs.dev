@@ -536,6 +536,123 @@ func TestMain(t *testing.T) {
 
 ```
 
+## Collections
+
+### Rust
+
+```rust
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
+
+pub fn vec(nums: &[i32]) -> Vec<i32> {
+    let mut num_list = Vec::new();
+    for num in nums {
+        num_list.push(*num);
+    }
+
+    num_list
+}
+
+pub fn hash_map(keys: &[&str], values: &[&str]) -> HashMap<String, String> {
+    let mut idx = 0 as usize;
+    let mut key_val: HashMap<String, String> = HashMap::new();
+    loop {
+        if idx >= keys.len() {
+            break;
+        }
+
+        key_val.insert(keys[idx].to_string(), values[idx].to_string());
+        idx += 1;
+    }
+
+    key_val
+}
+
+pub fn hash_set(elements: Vec<String>, key: &str) -> (HashSet<String>, bool) {
+    let mut set: HashSet<String> = HashSet::new();
+    for e in elements {
+        set.insert(e);
+    }
+
+    let contain = set.contains(key);
+    (set, contain)
+}
+
+pub fn btree_set(elements: Vec<String>) -> BTreeSet<String> {
+    let mut bs = BTreeSet::new();
+    for e in elements {
+        bs.insert(e);
+    }
+
+    bs
+}
+
+pub fn vec_dequeue(elements: Vec<String>) -> VecDeque<String> {
+    let mut queue = VecDeque::new();
+    for e in elements {
+        queue.push_front(e);
+    }
+
+    queue
+}
+
+pub fn btree_map(elements: Vec<(String, String)>) -> BTreeMap<String, String> {
+    let mut btree_map = BTreeMap::new();
+    for (key, val) in elements {
+        btree_map.insert(key, val);
+    }
+
+    btree_map
+}
+```
+
+### Golang
+
+```go
+package collections
+
+func Array(nums ...int32) [3]int32 {
+	arr := [3]int32{}
+	for idx, num := range nums {
+		if idx > 2 {
+			break
+		}
+		arr[idx] = num
+	}
+
+	return arr
+}
+
+func Slice(nums ...int32) []int32 {
+	numList := make([]int32, 0, len(nums))
+	numList = append(numList, nums...)
+	return numList
+}
+
+func HashMap(keys []string, values []string) map[string]string {
+	idx := 0
+	hashMap := make(map[string]string, len(keys))
+	for {
+		if idx >= len(keys) {
+			break
+		}
+
+		hashMap[keys[idx]] = values[idx]
+		idx++
+	}
+
+	return hashMap
+}
+
+func HashSet(keys []string) map[string]struct{} {
+	set := make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		set[key] = struct{}{}
+	}
+
+	return set
+}
+```
+
 ## Concurency
 
 ### Rust Concurrency Programming
