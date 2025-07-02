@@ -103,7 +103,8 @@ fn add(a: i32, b: i32) -> i32 {
 ```
 
 Output:
-```
+
+```bash
 The sum is: 11
 ```
 
