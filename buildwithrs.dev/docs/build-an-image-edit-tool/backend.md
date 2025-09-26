@@ -678,3 +678,35 @@ async fn get_img_data(img_path: &str) -> Result<Vec<u8>> {
     }
 }
 ```
+
+## Test
+
+### Upload
+
+![upload image](upload_image.png)
+
+![uploaded image](uploaded_image1.png)
+
+### Watermark
+
+![add watermark to image](watermark_img.png)
+
+![watermark ima](watermark_image.png)
+
+### Resize
+
+![resize image](resize_img.png)
+
+![watermark ima](resized_image.png)
+
+### Crop
+
+![Crop image](crop_img.png)
+
+![Croped image](croped_image.png)
+
+### Compress
+
+![Compress image](compress_img.png)
+
+![Compressed image](compressed_image.png)
