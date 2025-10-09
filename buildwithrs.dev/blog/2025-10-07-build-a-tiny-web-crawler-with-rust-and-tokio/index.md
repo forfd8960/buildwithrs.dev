@@ -53,6 +53,12 @@ cargo new --bin tiny-crawler1
 
 ### Dependency
 
+* reqwest: for http request.
+* tokio: for sending concurrent crawl task.
+* scraper: parse html into custom data structure.
+* futures: providing the foundations for asynchronous programming in Rust.
+* url: URL validation.
+
 ```toml
 [package]
 name = "tiny-crawler1"
@@ -66,7 +72,6 @@ thiserror = "2.0.16"
 scraper = "0.24.0"
 futures = "0.3.31"
 url = "2.5.7"
-ctrlc = { version = "3.4", features = ["termination"] }
 ```
 
 ### URL Queue
