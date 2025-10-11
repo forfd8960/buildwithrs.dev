@@ -8,6 +8,8 @@ tags: [rust, blog]
 
 Utility traits in Rust are fundamental traits that provide common functionality across the type system. They enable powerful abstractions and make generic programming more expressive. Let's explore each one with detailed explanations and examples.
 
+<!-- truncate -->
+
 ## 1. Drop Trait
 
 The `Drop` trait allows you to customize what happens when a value goes out of scope [1](https://doc.rust-lang.org/book/ch10-02-traits.html)[2](https://alexeden.github.io/learning-rust/programming_rust/13_utility_traits.html).

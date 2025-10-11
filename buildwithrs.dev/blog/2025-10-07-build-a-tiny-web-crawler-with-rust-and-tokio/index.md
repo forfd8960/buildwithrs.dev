@@ -7,6 +7,8 @@ tags: [rust, tokio, cralwer]
 
 In this blog post, I will share how to build a tiny web crawler with Rust and Tokio(Async Runtime).
 
+<!-- truncate -->
+
 ## What is a Web Crawler
 
 A web crawler, also known as a spider, spiderbot, or search engine bot, is an automated software program or script that systematically browses the World Wide Web to discover, fetch, and index web pages and their content. These bots are primarily used by search engines like Google to build indexes for search results, but they also power other applications such as data mining, monitoring, and content aggregation. Essentially, crawlers act like digital explorers that "crawl" across the internet, following links to map out the web's structure.
