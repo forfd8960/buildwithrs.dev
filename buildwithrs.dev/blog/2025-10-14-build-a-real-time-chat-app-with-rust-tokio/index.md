@@ -19,6 +19,8 @@ Today, we're diving into building a lightweight, multi-client text chat server t
 * How to dispatch the Message from one user to other users(clients).
 * How to Manage the users, channels, and messages.
 
+<!-- truncate -->
+
 
 ## Prerequisites
 So, to understand this project, you may need to know some Rust knowledge:
@@ -449,7 +451,6 @@ pub fn create_chan(
         if pre_chan_id.is_some() {
             not_send = true;
             chan.id = pre_chan_id.unwrap();
-        }
 
         let chan_id = chan.id.clone();
         self.channels.insert(chan_id.clone(), chan);
@@ -738,7 +739,7 @@ fn parse_join_resp(line: &String) -> Result<String, String> {
 2. **Registration**:
    - Read welcome message from server; log it.
    - Send registration: `framed_write.send(encode_reg(username))`.
-   - Read server response (assigned channel); update `ClientState` (Arc<RwLock> for shared access).
+   - Read server response (assigned channel); update `ClientState` (`Arc<RwLock> `for shared access).
    - Clone state for tasks.
 
 3. **Send Task (Spawned Async)**:
