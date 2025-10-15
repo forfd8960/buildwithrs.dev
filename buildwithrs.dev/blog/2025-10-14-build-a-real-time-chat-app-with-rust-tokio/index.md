@@ -13,7 +13,7 @@ Today, we're diving into building a lightweight, multi-client text chat server t
 
  So, to build real time text-based chat app, there are some issues that need to resolve:
 
-* How to make the app real time: We use `TCP` to build the connection between client and server, and send message to client real time.
+* How to make the app real time
 * How to Decode from the raw bytes from TCP connection, and Encode the Message and send through the TCP Connection?.
 * How to build a multi-client server to accept clients conn.
 * How to dispatch the Message from one user to other users(clients).
@@ -833,6 +833,29 @@ nice!
 ```
 
 ## Conclusion
-- Recap: Key takeaways on leveraging Tokio's ecosystem for real-time apps.
-- Call to action: Encourage readers to fork the code, experiment, and share their versions.
-- Resources: Full code repo link (if providing), further reading on advanced Tokio features.
+
+So now let's ansawer the question at the begain.
+
+* How to make the app real time
+
+    We use `TCP` to build the connection between client and server, and send message to client real time.
+
+* How to Decode from the raw bytes from TCP connection, and Encode the Message and send through the TCP Connection?.
+
+    We use `tokio-util`'s `LinesCodec` to encode and decode the data comes from / send to the TCP connection.
+
+* How to build a multi-client server to accept clients conn.
+
+    We use Tokio Runtime(`tokio::spawn`) to create async task to handler for every client.
+
+* How to dispatch the Message from one user to other users(clients).
+    1. We use Tokio broadcast channel to dispatch the message to users.
+    2. Chat Service will hold the `Sender<T>`, and every user(every client) will subscribe the channel(`Receiver<T>`).
+    3. In the async task for every client, it will keeping receive message from `rx`(`Receiver`), and encode thourgh `FramedWrite` to write the message to TCP Connection.
+* How to Manage the users, channels, and messages.
+
+    We use `ChatService` data structure to hold the user-channel relation, and message send through broadcast channel.
+
+## Code Repo
+
+[Txt Chat](https://github.com/forfd8960/txt-chat)
