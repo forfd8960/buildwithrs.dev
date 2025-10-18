@@ -15,16 +15,16 @@ Since I am learning Rust and Axum for web development, So I think the best way t
 
 and for this project, here is the basic techs it it used:
 
-* Rust: we use rust programming to build this.
-* Axum: the web framework we used to build this REST API
-* PostgreSQL: The Databased used to store user's blog.
-* JWT authentication: The way how we autenticate the users.
+* `Rust`: we use rust programming to build this.
+* `Axum`: the web framework we used to build this REST API
+* `PostgreSQL`: The Databased used to store user's blog.
+* `JWT authentication`: The way how we autenticate the users.
 
 <!-- truncate -->
 
 ## High-Level Design
 
-So in this project we use a Layered architecture: which means the request is flows from `Routers -> Handler -> Service -> Database`, and the response data is returned back the reverse order.
+So in this project we use a Layered architecture: which means the request is flows from `Routers -> Handler -> Service -> Models -> Database`, and the response data is returned back in the reverse order.
 
 ![Architecture](mini-blog-archi.png)
 
@@ -189,7 +189,7 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
             "/api/v1/blogs/{blog_id}",
             get(get_blog).put(update_blog).delete(delete_blog),
         )
-        .layer(from_fn_with_state(state.clone(), verify_token::<AppState>))
+        .layer(from_fn_with_state(state.clone(), verify_token::<AppState>)) // add verify token middleware(auth) after the routers need to protec
         .route("/index", get(index))
         .route("/api/v1/users/register", post(register))
         .route("/api/v1/users/login", post(login))
@@ -201,6 +201,39 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
 
 async fn index() -> Result<impl IntoResponse, AppError> {
     Ok("Hello, World!")
+}
+
+```
+
+## General handler implementation
+
+all the handler is implemented in a similar pattern:
+
+`src/handler/*.rs`
+
+* Init a `EntityRepo` in the handler.
+* Init `xxx_service` with the entity repo.
+* call related method in the service to complete the biz logic.
+* Return `Json(resp)` back to user.
+
+```rust
+use crate::{
+    dto::RequestType
+}
+
+pub async fn handler_name(
+    Extension(user): Extension<User>,
+    State(state): State<AppState>,
+    Json(payload): Json<RequestType>,
+) -> Result<impl IntoResponse, AppError> {
+
+    let entity_repo = EntityRepository::new(&state.pool);
+    let service = EntityService::new(&entity_repo);
+
+    // service.update_xxx(user.id, &payload).await?; for update
+    // service.delete_by_id(id).await?; for delete
+    let resp = service.create_xxx(user.id, &payload).await?;
+    Ok(Json(resp))
 }
 
 ```
