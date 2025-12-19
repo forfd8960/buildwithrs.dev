@@ -194,6 +194,8 @@ fn encode_decode_bincode() -> anyhow::Result<()> {
 }
 ```
 
+* 输出
+
 ```sh
 JSON output:
 {"name":"demo","enabled":true,"timeout_ms":null}
