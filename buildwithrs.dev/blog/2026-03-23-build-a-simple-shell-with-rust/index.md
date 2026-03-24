@@ -522,6 +522,13 @@ After expand, the arguments of the command will be expanded to the actual file p
 
 ![Run Commands AST](run_commands.png)
 
+![Run Shell01](run_simple_shell1.png)
+
+![Run Shell02](run_simple_shell2.png)
+![Run Shell03](run_shell3.png)
+![Run Shell04](run_shell4.png)
+![Run Shell05](run_shell5.png)
+
 ## Code
 
 [Simple Shell](https://github.com/forfd8960/simple-shell)
